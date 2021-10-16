@@ -11,7 +11,7 @@ def microcovids_per_week():
 def microcovids_per_micromort():
   return lognormal_around(100, 1000, size=graph.nsims)
 
-@graph.def_node(parents=[microcovids_per_week, microcovids_per_micromort])
+@graph.def_node(parents={'mcpw': microcovids_per_week, 'mcpmm': microcovids_per_micromort})
 def micromorts_per_week(mcpw, mcpmm):
   return mcpw / mcpmm
 
@@ -27,19 +27,19 @@ def hour_cost_of_micromort():
 def microcovid_per_week_budget():
   return 500 * np.ones(graph.nsims)
 
-@graph.def_node(display_name='Over budget?', parents=[microcovids_per_week, microcovid_per_week_budget])
+@graph.def_node(display_name='Over budget?', parents={'mcpw':microcovids_per_week, 'budget':microcovid_per_week_budget})
 def is_week_over_budget(mcpw, budget):
   return mcpw > budget
 
-@graph.def_node(display_name='lost hr/wk to discussion', parents=[is_week_over_budget, hour_cost_of_budget_discussion])
+@graph.def_node(display_name='lost hr/wk to discussion', parents={'over_budget':is_week_over_budget, 'cpbd':hour_cost_of_budget_discussion})
 def weekly_hour_cost_to_disc(over_budget, cpbd):
   return over_budget*cpbd
 
-@graph.def_node(display_name='lost hr/wk to disease', parents=[micromorts_per_week, hour_cost_of_micromort])
+@graph.def_node(display_name='lost hr/wk to disease', parents={'mmpw':micromorts_per_week, 'cpmm':hour_cost_of_micromort})
 def weekly_hour_cost_to_disease(mmpw, cpmm):
   return mmpw*cpmm
 
-@graph.def_node(display_name='lost hr/wk', parents=[weekly_hour_cost_to_disc, weekly_hour_cost_to_disease])
+@graph.def_node(display_name='lost hr/wk', parents={'disc':weekly_hour_cost_to_disc, 'disease':weekly_hour_cost_to_disease})
 def weekly_hour_cost(disc, disease):
   return disc + disease
 

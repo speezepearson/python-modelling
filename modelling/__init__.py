@@ -13,18 +13,18 @@ _F = t.TypeVar('_F', bound=Func)
 @dataclasses.dataclass(frozen=True)
 class NodeInfo:
   display_name: str
-  parents: t.Sequence[Func]
+  parents: t.Mapping[str, Func]
 
 class Graph:
   def __init__(self):
     self.node_infos: t.MutableMapping[Func, NodeInfo] = {}
     self.nsims = 0
 
-  def def_node(self, display_name: t.Optional[str] = None, parents: t.Sequence[Func] = ()) -> t.Callable[[_F], _F]:
+  def def_node(self, display_name: t.Optional[str] = None, parents: t.Mapping[str, Func] = ()) -> t.Callable[[_F], _F]:
     def decorate(f: _F) -> _F:
       self.node_infos[f] = NodeInfo(
         display_name=display_name if (display_name is not None) else f.__name__,
-        parents=tuple(parents),
+        parents=dict(parents),
       )
       return f
     return decorate
@@ -38,7 +38,7 @@ class Graph:
     }
     return '\n'.join([
       'digraph G {',
-      *[f'  {json.dumps(node_names[parent])} -> {json.dumps(node_names[child])};' for child, info in self.node_infos.items() for parent in info.parents],
+      *[f'  {json.dumps(node_names[parent])} -> {json.dumps(node_names[child])};' for child, info in self.node_infos.items() for parent in info.parents.values()],
       '}',
     ])
 
@@ -46,7 +46,7 @@ class Graph:
     self.nsims = nsims
     world: t.MutableMapping[Func, t.Any] = {}
     for func, node_info in self.node_infos.items():
-      vals = func(*[world[parent] for parent in node_info.parents])
+      vals = func(**{k: world[parent] for k, parent in node_info.parents.items()})
       if not isinstance(vals, np.ndarray):
         raise TypeError(f'{func} returned {type(vals)}; expected Numpy array')
       if vals.shape[0] != nsims:
